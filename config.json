@@ -1,0 +1,18 @@
+{
+    "SAGE_HOST": "192.168.1.1",
+    "SAGE_PORT": 8080,
+    "SAGE_USER": "sage",
+    "SAGE_PASS": "frey",
+    
+    "ROOT_PATH": "e:/videos/Jellyfin",
+    "FLAT_MOVIE_STRUCTURE": true,
+    
+    "PAGE_SIZE": 100,
+    
+    "VERBOSITY_LEVEL": 1,
+    "LOG_FILE_NAME": "sagex_nfo_generator.log",
+    "MAX_LOG_SIZE_MB": 1,
+    "MAX_LOG_COUNT": 5,
+    
+    "STATE_FILE_NAME": "processed_files.json"
+}
