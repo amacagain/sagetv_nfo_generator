@@ -3,15 +3,14 @@
 
 * **SageTV Integration:** Pulls detailed metadata (Title, Season/Episode, Description, Year) directly from the SageTV API.
 
-* **NFO Generation:** Creates Kodi-compliant `.nfo` files for robust metadata importing.
+* **NFO Generation:** Creates Kodi-compliant `.nfo` files for robust metadata importing. Two principal sub-folders for Movies and TV shows reside under a ROOT folder. Subsequent sub-folders for TV shows and seasons as supported by many media applications.
 
-* **Symbolic Link Creation:** Links to the original media without duplicating large files, saving disk space.
-
+* **Symbolic Link Creation:** NFO symbolic links to the original media eliminates relocating media files. 
 * **Change Detection:** Skips files that have already been processed and whose modification time (`mtime`) has not changed since the last run, ensuring fast execution.
 
 * **Cleanup:** Automatically removes orphaned symlinks and NFOs if the original SageTV file is deleted or no longer found.
 
-* **Separation of Concerns:** The core generation logic is separate from media server trigger calls.
+* **Separation of Concerns:** The core generation logic is separate from media server trigger calls. This means if you want to schedule imports into your media playback server, it should be implemented in a separate program. I am working on that now.
 
 ## 🛠️ Prerequisites
 
@@ -28,7 +27,7 @@ pip install requests
 
 ## ⚙️ Configuration
 
-The project uses two separate configuration files to maintain the separation between media generation and media server updates.
+The project uses two separate configuration files to maintain the separation between media generation and media playback server updates.
 
 ### 1. Core Configuration (`config.json`)
 
@@ -45,7 +44,7 @@ This file configures the connection to your SageTV server and defines the output
 
 ### 2. Jellyfin Trigger Configuration (`jellyfin_config.json`)
 
-This file is only required if you intend to use the separate `jellyfin_trigger.py` script to automatically initiate a library scan.
+This file is only required if you intend to use the separate `jellyfin_trigger.py` script to automatically initiate a library scan. 
 
 | Field | Description | Required | Notes |
 | :--- | :--- | :--- | :--- |
