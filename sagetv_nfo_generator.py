@@ -539,3 +539,4 @@ if __name__ == "__main__":
         # Catch any critical errors during config load or main execution
         critical_logger = logging.getLogger()
         critical_logger.critical(f"A fatal error occurred during program execution: {main_e}", exc_info=True)
+
