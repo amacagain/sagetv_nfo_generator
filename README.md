@@ -1,3 +1,9 @@
+## Description
+Exports SageTV metadata to a set of folders organized for compatibility with Jellyfin/Kodi.
+Configuration file provided and must be edited for your Sage server.
+An example set of instructions for using Jellyfin will be provided but that configuring Jellyfin/Kodi is outside the responsibility of this repo.
+
+Once this is running and Jellyfin configured, SageTV movies and shows will be available to watch on any Jellyfin supported device.
 
 ## 🎯 Features
 
