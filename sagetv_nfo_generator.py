@@ -4,7 +4,7 @@ import xml.etree.ElementTree as ET
 import logging
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import Dict, Optional, Set, Any, Tuple # Added Tuple
+from typing import Dict, Optional, Set, Any, Tuple
 import json
 import time
 import re 
@@ -12,7 +12,7 @@ import re
 # -----------------------------------------------------------------------------
 # Configuration File Constant
 # -----------------------------------------------------------------------------
-CONFIG_FILE_NAME = "config.json"
+CONFIG_FILE_NAME = "config.json" # <-- Corrected to use the main generator config
 # -----------------------------------------------------------------------------
 
 def load_config() -> Dict[str, Any]:
@@ -24,10 +24,11 @@ def load_config() -> Dict[str, Any]:
             logging.debug(f"Configuration loaded from {CONFIG_FILE_NAME}.")
             return config
     except FileNotFoundError:
-        logging.critical(f"FATAL ERROR: Configuration file '{CONFIG_FILE_NAME}' not found.")
+        # NOTE: Logging setup hasn't run yet, so use print/raise
+        print(f"FATAL ERROR: Configuration file '{CONFIG_FILE_NAME}' not found. Cannot proceed.")
         raise
     except json.JSONDecodeError as e:
-        logging.critical(f"FATAL ERROR: Failed to parse configuration file. Check JSON formatting: {e}")
+        print(f"FATAL ERROR: Failed to parse configuration file. Check JSON formatting: {e}")
         raise
 
 def setup_logging(config: Dict[str, Any]):
@@ -45,18 +46,22 @@ def setup_logging(config: Dict[str, Any]):
     elif level >= 1:
         root_logger.setLevel(logging.INFO)
         
-        # Console Handler
+        # Console Handler (Level 1 and above)
         console_handler = logging.StreamHandler()
         console_handler.setFormatter(log_formatter)
         root_logger.addHandler(console_handler)
 
         if level == 2:
-            # File Handler (only for VERBOSE_FILE)
-            log_file_path = Path(__file__).resolve().parent / config['LOG_FILE_NAME']
+            # File Handler (Level 2 only)
+            log_file_name = config.get('LOG_FILE_NAME', 'sagex_generator.log')
+            max_size_mb = config.get('MAX_LOG_SIZE_MB', 1)
+            max_count = config.get('MAX_LOG_COUNT', 5)
+            
+            log_file_path = Path(__file__).resolve().parent / log_file_name
             file_handler = RotatingFileHandler(
                 log_file_path, 
-                maxBytes=config.get('MAX_LOG_SIZE_MB', 1) * 1024 * 1024, 
-                backupCount=config.get('MAX_LOG_COUNT', 5)
+                maxBytes=max_size_mb * 1024 * 1024, 
+                backupCount=max_count
             )
             file_handler.setFormatter(log_formatter)
             root_logger.addHandler(file_handler)
@@ -71,14 +76,15 @@ class SageXConverter:
     def __init__(self, config: Dict[str, Any]):
         self.config = config
         
-        # Extract configuration settings
+        # SageTV Configuration
         self.auth = (config['SAGE_USER'], config['SAGE_PASS'])
         self.host = config['SAGE_HOST']
         self.port = config['SAGE_PORT']
-        self.page_size = config['PAGE_SIZE']
-        self.root_path = Path(config['ROOT_PATH'])
-        self.flat_movie_structure = config['FLAT_MOVIE_STRUCTURE']
+        self.page_size = config.get('PAGE_SIZE', 100)
         
+        # File/Folder Configuration
+        self.root_path = Path(config['ROOT_PATH'])
+        self.flat_movie_structure = config.get('FLAT_MOVIE_STRUCTURE', False)
         self.tv_shows_root = self.root_path / "TV Shows"
         self.movies_root = self.root_path / "Movies"
         
@@ -86,7 +92,7 @@ class SageXConverter:
         self.processed_tv_shows: Set[str] = set()
         
         # State management setup
-        self.state_file_path = Path(__file__).resolve().parent / config['STATE_FILE_NAME']
+        self.state_file_path = Path(__file__).resolve().parent / config.get('STATE_FILE_NAME', 'sagex_state.json')
         self.processed_state: Dict[str, Dict[str, Any]] = self._load_state()
         
         self._ensure_root_directories()
@@ -129,14 +135,15 @@ class SageXConverter:
         # Characters illegal in Windows file/folder names: <, >, :, ", /, \, |, ?, *
         illegal_chars = set(['<', '>', ':', '"', '/', '\\', '|', '?', '*'])
         
-        cleaned_name = ''.join(['-' if c in illegal_chars else c for c in name])        
+        cleaned_name = ''.join(['-' if c in illegal_chars else c for c in name])
+        
         cleaned_name = cleaned_name.strip()
         while cleaned_name and (cleaned_name.endswith('.') or cleaned_name.endswith(' ')):
             cleaned_name = cleaned_name.rstrip('. ').strip()
             
         return cleaned_name if cleaned_name else "UnknownMedia"
     
-    def _parse_sxxeyy(self, filename: str) -> Optional[Tuple[int, int]]: # Changed tuple[int, int] to Tuple[int, int]
+    def _parse_sxxeyy(self, filename: str) -> Optional[Tuple[int, int]]:
         """
         4.2: Parses the SXXEYY pattern (S01E01, s10e20, S1.E1, S-1-E-1, S01 E01)
         from a filename for the Fallback step.
@@ -153,6 +160,7 @@ class SageXConverter:
         
     def _get_media_files_page(self, start: int) -> Optional[ET.Element]:
         """3.1: Calls the SageX API for a specific page of media files."""
+        # Use basic auth directly in the URL for compatibility with SageX
         url = f"http://{self.auth[0]}:{self.auth[1]}@{self.host}:{self.port}/sagex/api"
         params = {
             "command": "GetMediaFiles",
@@ -163,12 +171,18 @@ class SageXConverter:
         
         try:
             logging.debug(f"Requesting API page at start={start}")
-            response = requests.get(url, params=params, timeout=30)
+            # Note: Requests uses the auth tuple passed, but the URL format is used for logging/debugging
+            response = requests.get(
+                f"http://{self.host}:{self.port}/sagex/api", 
+                params=params, 
+                auth=self.auth, 
+                timeout=30
+            )
             response.raise_for_status()
             root = ET.fromstring(response.content)
             return root
         except requests.exceptions.RequestException as e:
-            logging.error(f"API Request failed at start={start}: {e}")
+            logging.error(f"API Request failed at start={start}. Check SAGE_HOST, SAGE_PORT, SAGE_USER/PASS. Error: {e}")
             return None
         except ET.ParseError as e:
             logging.error(f"Failed to parse XML response at start={start}: {e}")
@@ -259,8 +273,14 @@ class SageXConverter:
     def _create_series_nfo(self, data: Dict[str, str], show_path: Path):
         """4.1: Generates the tvshow.nfo file in the main series folder."""
         
-        directors_xml = "".join(f"<director>{d.strip()}</director>" for d in data['Directors'].split(';') if d.strip())
-        writers_xml = "".join(f"<writer>{w.strip()}</writer>" for w in data['Writers'].split(';') if w.strip())
+        # FIX: Robust check for Directors/Writers before processing
+        directors_xml = ""
+        if data.get('Directors'):
+            directors_xml = "".join(f"<director>{d.strip()}</director>" for d in data['Directors'].split(';') if d.strip())
+            
+        writers_xml = ""
+        if data.get('Writers'):
+            writers_xml = "".join(f"<writer>{w.strip()}</writer>" for w in data['Writers'].split(';') if w.strip())
         
         nfo_content = f"""<tvshow>
     <title>{data['Title']}</title>
@@ -322,7 +342,11 @@ class SageXConverter:
         if cleaned_show_name not in self.processed_tv_shows:
             self._create_series_nfo(data, show_path)
 
-        runtime_min = round(int(data['RuntimeMs'])/60000) if data['RuntimeMs'] else '0'
+        # FIX: Safe Runtime conversion
+        try:
+            runtime_min = round(int(data['RuntimeMs']) / 60000)
+        except (ValueError, TypeError):
+            runtime_min = '0'
         
         nfo_content = f"""<episodedetails>
     <title>{data['EpisodeName'].strip() or data['Title'].strip()}</title>
@@ -363,10 +387,20 @@ class SageXConverter:
             target_dir = self.movies_root / cleaned_dir_name # 5. Structure (Folder)
             nfo_filename_base = cleaned_dir_name 
             
-        runtime_min = round(int(data['RuntimeMs'])/60000) if data['RuntimeMs'] else '0'
+        # FIX: Safe Runtime conversion
+        try:
+            runtime_min = round(int(data['RuntimeMs']) / 60000)
+        except (ValueError, TypeError):
+            runtime_min = '0'
         
-        directors_xml = "".join(f"<director>{d.strip()}</director>" for d in data['Directors'].split(';') if d.strip())
-        writers_xml = "".join(f"<writer>{w.strip()}</writer>" for w in data['Writers'].split(';') if d.strip())
+        # FIX: Robust check for Directors/Writers before processing
+        directors_xml = ""
+        if data.get('Directors'):
+            directors_xml = "".join(f"<director>{d.strip()}</director>" for d in data['Directors'].split(';') if d.strip())
+            
+        writers_xml = ""
+        if data.get('Writers'):
+            writers_xml = "".join(f"<writer>{w.strip()}</writer>" for w in data['Writers'].split(';') if w.strip())
 
         nfo_content = f"""<movie>
     <title>{raw_movie_name}</title>
@@ -520,6 +554,7 @@ class SageXConverter:
         self._cleanup_deleted_files()
         self._save_state()
 
+
 # --- Main Execution Block ---
 if __name__ == "__main__":
     
@@ -539,4 +574,3 @@ if __name__ == "__main__":
         # Catch any critical errors during config load or main execution
         critical_logger = logging.getLogger()
         critical_logger.critical(f"A fatal error occurred during program execution: {main_e}", exc_info=True)
-

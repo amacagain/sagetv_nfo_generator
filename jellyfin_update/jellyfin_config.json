@@ -1,0 +1,6 @@
+{
+    "JELLYFIN_HOST": "localhost",
+    "JELLYFIN_PORT": 8096,
+    "JELLYFIN_API_KEY": "YOUR_JELLYFIN_API_KEY",
+    "LOG_FILE_NAME": "jellyfin_trigger.log"
+}
