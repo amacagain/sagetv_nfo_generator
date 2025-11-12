@@ -5,6 +5,8 @@ An example set of instructions for how to add a SageTV library to Jellyfin will 
 
 Once this program has run and Jellyfin configured, SageTV movies and shows will be available to watch on any Jellyfin supported device. Of course those Jellyfin clients will have to be configured to point to the Jellyfin server but that is outside the scope of this project.
 
+No media files have to be moved or relocated.
+
 ## 🎯 Features
 
 * **SageTV Integration:** Pulls detailed metadata (Title, Season/Episode, Description, Year) directly from the SageTV API.
