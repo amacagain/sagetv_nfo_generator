@@ -3,16 +3,15 @@ Exports SageTV metadata to a set of folders organized for compatibility with Jel
 Configuration file provided and must be edited for your Sage server.
 An example set of instructions for how to add a SageTV library to Jellyfin will be provided as a courtesy but configuring Jellyfin/Kodi is outside the responsibility of this project.
 
-Once this program has run and Jellyfin configured, SageTV movies and shows will be available to watch on any Jellyfin supported device. Of course those Jellyfin clients will have to be configured to point to the Jellyfin server but that is outside the scope of this project.
+Once this program has run and Jellyfin configured, SageTV movies and shows will be available to watch on any Jellyfin supported device. The Jellyfin server need only create two media libraries for Sage Movies and TV Shows. Of course those Jellyfin clients will have to be configured to point to the Jellyfin server but that is outside the scope of this project.
 
-No media files have to be moved or relocated.
 
 ## 🎯 Features
 
 * **SageTV Integration:** Pulls detailed metadata (Title, Season/Episode, Description, Year) directly from the SageTV API.
 
 * **NFO Generation:** Creates Kodi-compliant `.nfo` files for robust metadata importing. Two principal sub-folders for Movies and TV shows reside under a ROOT folder. Subsequent sub-folders for TV shows and seasons as supported by many media applications.
-
+* **No impact on file/disc organization** No media files have to be moved or relocated.
 * **Symbolic Link Creation:** NFO symbolic links to the original media eliminates relocating media files. Unfortunately, creating symbolic links on Windows requires this program runs with admin privileges.
 * **Change Detection:** Skips files that have already been processed and whose modification time (`mtime`) has not changed since the last run, ensuring fast execution.
 
