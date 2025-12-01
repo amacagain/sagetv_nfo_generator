@@ -34,9 +34,9 @@ pip install requests
 
 ## ⚙️ Configuration
 
-The project uses two separate configuration files to maintain the separation between media generation and media playback server updates.
+The project uses a configuration file to maintain the separation between media generation and media playback server updates.
 
-### 1. Core Configuration (`config.json`)
+### Core Configuration (`config.json`)
 
 This file configures the connection to your SageTV server and defines the output structure.
 
@@ -48,6 +48,7 @@ This file configures the connection to your SageTV server and defines the output
 | `ROOT_PATH` | **The directory where the symlinks and NFOs will be created.** | Yes | This folder must be configured as a media library source in your media server (Jellyfin/Plex/Kodi). |
 | `FLAT_MOVIE_STRUCTURE` | If `true`, movies are placed directly in the `Movies` folder. If `false`, they get their own subfolder. | No | Default: `false` |
 | `VERBOSITY_LEVEL` | Logging level (0=Critical, 1=Info, 2=Debug/File Logging). | No | Default: `1` |
+| 'MAX_FILES_TO_PROCESS' | 0 for all files (default). Set a positive number to limit the processing count for testing purposes | Yes | Default: 0 | 
 
 ## 🚀 Running the Program
 
@@ -99,5 +100,25 @@ Configuration (`jellyfin_config.json`)
 **Usage: Tell Jellyfin to scan**
 
 python jellyfin_trigger.py
+
+## NFO/Symbolic Link Cleanup and Conflict
+This utility includes advanced stability features to handle common issues in SageTV environments:
+
+#### Stale Path Resolution:
+If your files are transcoded (e.g., SageTV reports .mpg but the actual file is .mkv), the utility intelligently searches for the correct file on disk and links to the available format, ensuring your links never point to missing files.
+#### State-Based Collision Resolution:
+Prevents output filename clashes. If two distinct SageTV recordings (different IDs) map to the same target filename (e.g., two recordings of the same show episode), the utility appends the unique SageTV MediaFileID to the filename (e.g., Show - S01E01 - 12345.mkv).
+#### Crucially:
+This resolution is persistent, meaning the script remembers the unique name in the sagex_state.json file and will not re-log the collision on every subsequent run.
+#### Stale File Cleanup:
+Automatically removes symlinks and NFOs if the underlying media file they point to is deleted from your disk (e.g., after cleanup by SageTV).
+Media Center Compatibility: Generates standard tvshow.nfo and episode/movie NFO files with extracted metadata (Title, Plot, Season/Episode numbers, etc.), suitable for use with Kodi, Jellyfin, and likely Emby.
+
+## Important Notes on State and Cleanup
+#### sagex_state.json:
+This file is automatically created and maintained by the script. Do not modify this file manually. It is essential for the cleanup process and, more importantly, for remembering collision-resolved filenames. Deleting it will force the script to treat all files as new and re-run collision checks where they were previously resolved.
+#### Symlink Permissions:
+If you encounter OSError: symbolic link privilege not held, ensure the user running the script has the necessary permissions to create symlinks on your operating system.
+
 
 
